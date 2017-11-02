@@ -102,6 +102,7 @@ INPUT c:/texlive/2017/texmf-var/fonts/map/pdftex/updmap/pdftex.map
 INPUT Proposal.aux
 INPUT ./Proposal.out
 INPUT ./Proposal.out
+INPUT c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 INPUT c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
 INPUT c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT c:/texlive/2017/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb
