@@ -1,0 +1,43 @@
+\documentclass{NSF}
+
+\graphicspath{{figures/}}
+
+\begin{document}
+
+
+
+% A. Cover Sheet
+% A number of the boxes contained on the Cover Sheet are
+% electronically pre-filled as part of the FastLane login process
+% Complete the rest of your info there
+
+% B. Project Summary
+\title{CS 182: Final Project Proposal}
+\begin{center}
+	{\bf \large Daniel Seong, Michelle Chiang, Andrew Fai}
+
+	\today
+\end{center}
+
+\section{Project Description}
+
+\subsection{Problem Statement}
+For our final project, we will be using the OpenAI Gym platform to create generalized and some specialized Atari agents, which will employ classical/adversarial search, MDPs, and (advanced) RL. Ultimately, we are striving to compare the performance of generalized and specialized agents, determine if generalized parameters truly exist, and discover the factors of a game of which the optimal parameters are a function.
+
+\subsection{Approach}
+Our strategy will be to complete the following, in order of priority:
+\begin{enumerate}
+\item Implement and test classical/adversarial search, MDPs, RL agents for [game/problem].
+\item Generalize our agents to be transferable to a handful of other Atari games.
+\item Create fine-tuned agents to specific games, and contrast them in order to determine the underlying game mechanics that dictate optimal parameters as well as the effectiveness of generalized parameters.
+\item Draw conclusions about the degree to which parameters can be generalized.
+\item \emph{Stretch}: Implement a deep RL agent using neural networks, and compare performance with that of the traditional algorithms.
+\end{enumerate}
+
+\subsection{Resources and References}
+We will certainly be using the OpenAI documentation and forums to help us become accustomed to unfamiliar environments, and we will be referring to AIMA and class notes when implementing standard algorithms. If we reach our stretch goal, we will use Kevin P. Murphy's \emph{Machine Learning: A Probabilistic Perspective}, and most likely a few other online resources that we find along the way.
+
+\subsection{Collaboration Plan}
+We plan on collaborating throughout each part of the process rather than having individual implementation, but we will assign a point-person to each goal: Michelle for general agents, Daniel for specialized agents, and Andrew for algorithmic implementation.
+
+\end{document}
