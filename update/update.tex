@@ -1,0 +1,63 @@
+\documentclass{NSF}
+
+\graphicspath{{figures/}}
+
+\begin{document}
+
+
+
+% A. Cover Sheet
+% A number of the boxes contained on the Cover Sheet are
+% electronically pre-filled as part of the FastLane login process
+% Complete the rest of your info there
+
+% B. Project Summary
+\title{CS 182: Final Project}
+\begin{center}
+	{\bf \large Daniel Seong, Michelle Chiang, Andrew Fai}
+
+	\today
+\end{center}
+
+\section{Project Update}
+
+\subsection{Progress}
+So far, we have focused our efforts on setting up the OpenAI Gym environment (a task surprisingly laden with unsolvable errors) and understanding the Atari environments.
+\\\\
+For our observation space, we have looked into the RAM states, which are lists of 128 integers, and the image states, which are three-dimensional arrays containing pixels and RGB colors. While the latter is a more intuitive representation that is easy to visualize, the former is at least 300x smaller and constantly sized across all Atari games. As such, we are leaning toward using the RAM states. Fortunately, the action space is more straightforward; each action is assigned an integer value, and for our purposes it is relatively unimportant to know which action is which value.
+\\\\
+We have also written skeleton code for MDPs and RL, since these can be applied to the action and observation spaces as they currently stand.
+\\
+
+\subsection{Problems}
+There are two main problems we are currently running into, the second of which is a consequence of the first.
+\\\\
+The interpretation of the observation space is quite difficult compared to Pac-Man; the image states can have agents that occupy multiple pixels or non-agent objects (mainly projectiles) that are numerous, temporary, and strangely behaved. While we could use some hard-coding on a specific game in order to extract all agent and non-agent entities, our original project goal was to generalize our code for many Atari games.
+\\\\
+Though distinguishing between agents and the environment is not necessary for MDPs and RL under the current representations, our inability to do so at the moment makes classical search inapplicable to many of the Atari games. Given this, we acknowledge the possibility of eliminating classical search from our scope for the sake of maintaining generality, unless we are able to discover a solution for this.
+\\
+
+\subsection{Presentation}
+We would prefer to present at the poster session.
+
+\end{document}
+
+
+For our final project, we will be using the OpenAI Gym platform to create generalized and some specialized Atari agents, which will employ classical/adversarial search, MDPs, and (advanced) RL. Ultimately, we are striving to compare the performance of generalized and specialized agents, determine if generalized parameters truly exist, and discover the factors of a game of which the optimal parameters are a function.
+
+\subsection{Approach}
+Our strategy will be to complete the following, in order of priority:
+\begin{enumerate}
+\item Implement and test classical/adversarial search, MDPs, RL agents for the Atlantis game.
+\item Generalize our agents to be transferable to a handful of other Atari games.
+\item Create fine-tuned agents to those specific games, and contrast them in order to determine the underlying game mechanics that dictate optimal parameters.
+\item Draw conclusions about the degree to which parameters can be generalized, based on their effectiveness and versatility.
+\item \textbf{[Stretch]} Implement a deep RL agent using neural networks, and compare performance with that of the traditional algorithms.
+\end{enumerate}
+In general, what we refer to as "parameters" extend beyond learning and discount rates to include reward and punishment systems. Additionally, as we progress through the project, we will have a better sense of how many a "handful" of other games can reasonably be.
+
+\subsection{Resources and References}
+We will certainly be using the OpenAI documentation and forums to help us become accustomed to unfamiliar environments, and we will be referring to AIMA and class notes when implementing standard algorithms. If we reach our stretch goal, we will use Kevin P. Murphy's \emph{Machine Learning: A Probabilistic Perspective} and most likely a few other online resources that we find along the way.
+
+\subsection{Collaboration Plan}
+We plan on collaborating throughout each part of the process rather than having individual implementation, but we will assign a point-person to each goal: Michelle for general agents, Daniel for specialized agents, and Andrew for overall algorithmic implementation and stretch goals.
