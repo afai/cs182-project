@@ -31,7 +31,7 @@ for episode in range(numEpisodes):
         # For each action in the max path...
         for action in actions:
             # Take the action
-            _, reward, done, info = env.step(action)
+            _, reward, done, _ = env.step(action)
             # Render
             env.render(close=closeRender)
             # Add to score
