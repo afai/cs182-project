@@ -1,6 +1,11 @@
 import gym
 import Queue
 import copy
+from NN import *
+import torch
+from torch.autograd import Variable
+import torch.nn.functional as F
+import pickle
 
 # Agent class
 class Agent:
@@ -62,3 +67,20 @@ class BFSAgent(Agent):
             maxPath = maxPath[:1]
         # Return actions
         return maxPath
+
+class DQNRAMagent(Agent):
+    # Initialize
+    def __init__(self, game):
+        with open("DQNpickle/"+game+".pkl", "rb") as f:
+            self.model = pickle.load(f)
+    # Get best action
+    def getActions(self, env):
+        # Get current observation
+        obs = env.env.ale.getRAM()
+        # Compute A values
+        qValues = self.model.forward(Variable(torch.from_numpy(obs).unsqueeze(0).float()))
+        # Compute best action
+        qValue, action = qValues.max(dim=1)
+        action = action.data[0]
+        # Return action
+        return [action]

@@ -6,9 +6,10 @@ from agents import *
 env = gym.make("MsPacman-ram-v0")
 # Create agent
 # agent = RandomAgent()
-agent = BFSAgent(maxActions=1, oneAction=False)
+# agent = BFSAgent(maxActions=1, oneAction=False)
+agent = DQNRAMagent("MsPacman-ram")
 # Set maximum number of plan-ahead actions and number of episodes
-numEpisodes = 1
+numEpisodes = 100
 closeRender = False
 # Store episode scores
 scores = []
