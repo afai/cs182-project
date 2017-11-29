@@ -1,22 +1,20 @@
+import Queue, copy
 import gym
-import Queue
-import copy
-from NN import *
 import torch
-from torch.autograd import Variable
 import torch.nn.functional as F
-import pickle
+from torch.autograd import Variable
+from NN import *
 
 # Agent class
 class Agent:
     # Must have a method to get action(s)
-    def getActions(self, env):
+    def getActions(self, env, obs):
         raise Exception('Not Defined!')
 
 # Random agent
 class RandomAgent(Agent):
     # Return a random action
-    def getActions(self, env):
+    def getActions(self, env, obs):
         return [env.action_space.sample()]
 
 # BFS agent
@@ -26,7 +24,7 @@ class BFSAgent(Agent):
         self.maxActions = maxActions
         self.oneAction = oneAction
     # Perform BFS
-    def getActions(self, env):
+    def getActions(self, env, obs):
         # Get the current state
         currentState = env.env.clone_state()
         # Create a fringe
@@ -71,12 +69,10 @@ class BFSAgent(Agent):
 class DQNRAMagent(Agent):
     # Initialize
     def __init__(self, game):
-        with open("DQNpickle/"+game+".pkl", "rb") as f:
-            self.model = pickle.load(f)
+        with open("DQNmodels/" + game, "rb") as f:
+            self.model = torch.load(f)
     # Get best action
-    def getActions(self, env):
-        # Get current observation
-        obs = env.env.ale.getRAM()
+    def getActions(self, env, obs):
         # Compute A values
         qValues = self.model.forward(Variable(torch.from_numpy(obs).unsqueeze(0).float()))
         # Compute best action
