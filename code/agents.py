@@ -1,5 +1,6 @@
-import Queue, copy
+import Queue, copy, random
 import gym
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -68,15 +69,28 @@ class BFSAgent(Agent):
 
 class DQNRAMagent(Agent):
     # Initialize
-    def __init__(self, game):
+    def __init__(self, game, epsilon=0.0):
         with open("DQNmodels/" + game, "rb") as f:
             self.model = torch.load(f)
+        self.epsilon = epsilon
     # Get best action
     def getActions(self, env, obs):
-        # Compute A values
-        qValues = self.model.forward(Variable(torch.from_numpy(obs).unsqueeze(0).float()))
-        # Compute best action
-        qValue, action = qValues.max(dim=1)
-        action = action.data[0]
+        # IF the stacked observation does not exist...
+        if not hasattr(self, 'obsStacked'):
+            # Create it
+            self.obsStacked = np.tile(obs, (self.model.num_frames, 1))
+        # Update stacked observation
+        self.obsStacked = np.vstack((self.obsStacked[1:], np.expand_dims(obs, 0)))
+        # If should choose random action...
+        if random.random() < self.epsilon:
+            # Choose random action
+            action = [env.action_space.sample()]
+        # Else...
+        else:
+            # Compute Q values
+            qValues = self.model.forward(Variable(torch.from_numpy(self.obsStacked).unsqueeze(0).float()))
+            # Select best action
+            qValue, action = qValues.max(dim=1)
+            action = action.data[0]
         # Return action
         return [action]

@@ -3,13 +3,13 @@ import time
 from agents import *
 
 # Set game
-game = "MsPacman"
+game = "Breakout"
 # Create environment
 env = gym.make(game + "-ram-v0")
 # Create agent
 # agent = RandomAgent()
 # agent = BFSAgent(maxActions=1, oneAction=False)
-agent = DQNRAMagent(game + "-ram")
+agent = DQNRAMagent(game + "-ram", epsilon=0.05)
 # Set maximum number of plan-ahead actions and number of episodes
 numEpisodes = 100
 closeRender = False
