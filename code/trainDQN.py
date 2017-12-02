@@ -10,12 +10,14 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 # Global parameters
-MEMORY_CAPACITY = 1000000
+MEMORY_CAPACITY = 100000
 BATCH_SIZE = 32
 RAM_SIZE = 128
 NUM_FRAMES = 4
 CONVOLUTION_BRANCH = 2
-# DEATH_PUNISHMENT = 1
+MODEL_UPDATE = 25
+EPSILON_MIN = 0.1
+EPSILON_STOP = 0.7
 
 # Class for remembering transitions
 class ExperienceReplayRAM():
@@ -59,14 +61,16 @@ class ExperienceReplayRAM():
 if __name__ == "__main__":
     # Set parameters
     game = "Breakout"
-    numEpisodes = 10000
+    numEpisodes = 100000
     closeRender = True
+    oneLife = True
     discount = 0.99
     loss_func = torch.nn.SmoothL1Loss()
     # Initialize environment, model, optimizer, and memory
-    env = gym.make(game + "-ram-v0")
-    model = NNRAM(num_frames=NUM_FRAMES, b=CONVOLUTION_BRANCH, input_dim=RAM_SIZE, output_dim=env.action_space.n)
-    optimizer = torch.optim.RMSprop(model.parameters())
+    env = gym.make(game + "-ram-v4")
+    modelOpt = NNRAM(num_frames=NUM_FRAMES, b=CONVOLUTION_BRANCH, input_dim=RAM_SIZE, output_dim=env.action_space.n)
+    modelFix = NNRAM(num_frames=NUM_FRAMES, b=CONVOLUTION_BRANCH, input_dim=RAM_SIZE, output_dim=env.action_space.n)
+    optimizer = torch.optim.Adam(modelOpt.parameters(), lr=0.0001)
     memory = ExperienceReplayRAM(MEMORY_CAPACITY)
     # Store scores and loss
     scores = []
@@ -75,8 +79,17 @@ if __name__ == "__main__":
     startTime = time.time()
     # For each episode...
     for episode in range(numEpisodes):
+        # If epsilon has stopped decreasing...
+        if float(episode) / numEpisodes >= EPSILON_STOP:
+            # Render
+            closeRender = False
+        # If we have performed 25 episodes...
+        if episode % 25 == 0:
+            # Update fixed model
+            modelFix.load_state_dict(modelOpt.state_dict())
         # Calculate epsilon
-        epsilon = 1.0 - float(episode) / numEpisodes
+        epsilon = 1.0 - (1.0 - EPSILON_MIN) / EPSILON_STOP * (float(episode) / numEpisodes)
+        epsilon = max(epsilon, EPSILON_MIN)
         # Initialize time-steps, score, and loss
         timeSteps = 0
         score = 0.0
@@ -84,6 +97,7 @@ if __name__ == "__main__":
         numSamples = 0
         # Reset environment and set done to false
         currObsStacked = np.tile(env.reset(), (NUM_FRAMES, 1))
+        lives = env.env.ale.lives()
         done = False
         # Render
         env.render(close=closeRender)
@@ -95,18 +109,22 @@ if __name__ == "__main__":
                 action = env.action_space.sample()
             # Else...
             else:
-                # Compute Q values
-                qValues = model.forward(Variable(torch.from_numpy(currObsStacked).unsqueeze(0).float()))
+                # Compute Q values using fixed model
+                qValues = modelFix.forward(Variable(torch.from_numpy(currObsStacked).unsqueeze(0).float()))
                 # Select best action
                 qValue, action = qValues.max(dim=1)
                 action = action.data[0]
             # Perform action and observe
-            nextObs, reward, done, _ = env.step(action)
+            nextObs, reward, done, info = env.step(action)
+            # If one life per episode and we lost it...
+            if oneLife and lives > info["ale.lives"]:
+                # Set done to True to end episode
+                done = True
             # Compute next observation stacked
             nextObsStacked = np.vstack((currObsStacked[1:], np.expand_dims(nextObs, 0)))
             # Store transition
             memory.store(currObsStacked, nextObsStacked, action, reward, done)
-            # If enough memory and still training
+            # If enough memory
             if memory.full or memory.index >= BATCH_SIZE:
                 # Reset gradient
                 optimizer.zero_grad()
@@ -118,9 +136,9 @@ if __name__ == "__main__":
                 transAction = transARD[:,-3].astype("int")
                 transReward = Variable(torch.from_numpy(transARD[:,-2]).float())
                 transNotDone = Variable(torch.from_numpy(1-transARD[:,-1]).float())
-                # Compute Q values
-                transQcurr = model.forward(transScurr)
-                transQnext = model.forward(transSnext)
+                # Compute Q values from appropriate model
+                transQcurr = modelOpt.forward(transScurr)
+                transQnext = modelFix.forward(transSnext)
                 # Compute prediction
                 pred = transQcurr[np.arange(BATCH_SIZE),transAction]
                 # Compute target
@@ -157,4 +175,4 @@ if __name__ == "__main__":
     plt.close()
     # Save model
     with open("DQNmodels/" + game + "-ram", "wb") as f:
-        torch.save(model, f)
+        torch.save(modelOpt, f)
