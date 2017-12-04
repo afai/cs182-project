@@ -5,11 +5,10 @@ from agents import *
 # Set game
 game = "Breakout"
 # Create environment
-env = gym.make(game + "-ram-v0")
+env = gym.make(game + "-ram-v4")
 # Create agent
 # agent = RandomAgent()
-# agent = BFSAgent(maxActions=1, oneAction=False)
-agent = DQNRAMagent(game + "-ram", epsilon=0.05)
+agent = DQNagent(game, isRAM=False, env=env, epsilon=0.05)
 # Set maximum number of plan-ahead actions and number of episodes
 numEpisodes = 100
 closeRender = False
@@ -29,20 +28,14 @@ for episode in range(numEpisodes):
     env.render(close=closeRender)
     # While game is not done...
     while not done:
-        # Get actions
-        actions = agent.getActions(env, obs)
-        # For each action in the max path...
-        for action in actions:
-            # Take the action
-            obs, reward, done, _ = env.step(action)
-            # Render
-            env.render(close=closeRender)
-            # Add to score
-            score += reward
-            # If actually done...
-            if done:
-                # Terminate
-                break
+        # Get action
+        action = agent.getAction(env, obs)
+        # Take the action
+        obs, reward, done, _ = env.step(action)
+        # Render
+        env.render(close=closeRender)
+        # Add to score
+        score += reward
         # Increment time
         timeSteps += len(actions)
     # Print timesteps, score

@@ -6,11 +6,11 @@ from torch.autograd import Variable
 from NN import *
 import numpy as np
 import matplotlib
-# matplotlib.use('agg')
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 # Global parameters
-MEMORY_CAPACITY = 100000
+MEMORY_CAPACITY = 10000
 BATCH_SIZE = 32
 RAM_SIZE = 128
 NUM_FRAMES = 4
@@ -58,27 +58,28 @@ class ExperienceReplayRAM():
         # Return sample
         return self.transSTS[sampleInds], self.transARD[sampleInds]
 
-# Function to convert to grayscale and reduce the size of the image
-def grayAndReduce(img):
-	return np.average(img[::2, ::2], axis=2, weights=GRAY_WEIGHTS).astype("uint8")
-
 # If main...
 if __name__ == "__main__":
     # Set parameters
-    game = "MsPacman"
+    game = "Breakout"
     numEpisodes = 100000
     closeRender = True
     oneLife = True
     discount = 0.99
     loss_func = torch.nn.SmoothL1Loss()
-    # Initialize environment, model, optimizer, and memory
-    env = gym.make(game + "-v4")
-    testFrame = grayAndReduce(env.reset())
-    imgH, imgW = testFrame.shape
-    modelOpt = NNRAM(num_frames=NUM_FRAMES, b=CONVOLUTION_BRANCH, input_dim=RAM_SIZE, output_dim=env.action_space.n)
-    modelFix = NNRAM(num_frames=NUM_FRAMES, b=CONVOLUTION_BRANCH, input_dim=RAM_SIZE, output_dim=env.action_space.n)
-    optimizer = torch.optim.Adam(modelOpt.parameters(), lr=0.0001)
+    # Initialize environment and replay memory
+    env = gym.make(game + "-ram-v4")
     memory = ExperienceReplayRAM(MEMORY_CAPACITY)
+    # Specify model arguments
+    modelArgs = {"num_frames":NUM_FRAMES,
+                 "b":CONVOLUTION_BRANCH,
+                 "input_dim":RAM_SIZE,
+                 "output_dim":env.action_space.n,
+                }
+    # Create models and optimizer
+    modelOpt = NNRAM(**modelArgs)
+    modelFix = NNRAM(**modelArgs)
+    optimizer = torch.optim.Adam(modelOpt.parameters(), lr=0.0001)
     # Store scores and loss
     scores = []
     losses = []
@@ -104,6 +105,7 @@ if __name__ == "__main__":
         numSamples = 0
         # Reset environment and set done to false
         currObsStacked = np.tile(env.reset(), (NUM_FRAMES, 1))
+        print currObsStacked.shape
         lives = env.env.ale.lives()
         done = False
         # Render
@@ -166,7 +168,7 @@ if __name__ == "__main__":
             score += reward
             timeSteps += 1
         # Average loss
-        episodeLoss /= numSamples
+        episodeLoss /= (numSamples+1)
         # Print timesteps, score
         print "Ep {0:>6}: steps {1:>6}, score {2:>6}, time {3:>9.2f}, loss {4:>10.2f}".format(episode, timeSteps+1, int(score), time.time()-startTime, episodeLoss)
         # Store score and loss
