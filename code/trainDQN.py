@@ -2,6 +2,7 @@ import sys, time, random
 import gym
 import torch
 import torch.nn.functional as F
+import torch.multiprocessing as mp
 from torch.autograd import Variable
 from NN import *
 from ExperienceReplay import *
@@ -16,9 +17,11 @@ BATCH_SIZE = 32
 NUM_FRAMES = 4
 CONVOLUTION_BRANCH = 2
 MODEL_UPDATE = 25
+NUM_PROCESSES = 4
 EPSILON_MIN = 0.1
 EPSILON_STOP = 0.7
 GRAY_WEIGHTS = [0.3, 0.6, 0.1]
+EPISODE_STRING = "Ep {0:>6}: steps {1:>6}, score {2:>6}, time {3:>9.2f}, loss {4:>10.2f}"
 
 # Function to convert to grayscale and reduce the size of the image
 def processObs(img, isRAM):
@@ -31,47 +34,10 @@ def processObs(img, isRAM):
         # Grey and down-sample
         return np.average(img[::2, ::2], axis=2, weights=GRAY_WEIGHTS).astype("uint8")
 
-# If main...
-if __name__ == "__main__":
-    # Set parameters
-    game = "Breakout"
-    isRAM = False
-    numEpisodes = 1000
-    closeRender = True
-    oneLife = True
-    discount = 0.99
-    loss_func = torch.nn.SmoothL1Loss()
-    # Initialize environment and get observation dimensions
-    env = gym.make(game + isRAM * "-ram" + "-v4")
-    obsDims = processObs(env.reset(), isRAM).shape
-    tileDims = tuple([NUM_FRAMES] + len(obsDims) * [1])
-    # Specify memory arguments and initialize memory
-    memoryArgs = {"capacity": MEMORY_CAPACITY,
-                  "batchSize": BATCH_SIZE,
-                  "numFrames": NUM_FRAMES,
-                  "obsDims": obsDims}
-    memory = ExperienceReplay(**memoryArgs)
-    # Specify model arguments and initialize models
-    modelType = NNRAM if isRAM else NNscreen
-    modelArgs = {"num_frames": NUM_FRAMES,
-                 "b": CONVOLUTION_BRANCH,
-                 "input_dim": obsDims,
-                 "output_dim": env.action_space.n}
-    modelOpt = modelType(**modelArgs)
-    modelFix = modelType(**modelArgs)
-    # Initialize optimizers
-    optimizer = torch.optim.Adam(modelOpt.parameters(), )
-    # Store scores and loss
-    scores = []
-    losses = []
-    # Start the training timer
-    startTime = time.time()
+# Function to train model asynchronously
+def train(modelOpt, modelFix, scores, losses):
     # For each episode...
     for episode in range(numEpisodes):
-        # If epsilon has stopped decreasing...
-        # if float(episode) / numEpisodes >= EPSILON_STOP:
-        #     # Render
-        #     closeRender = False
         # If we have performed 25 episodes...
         if episode % 25 == 0:
             # Update fixed model
@@ -148,18 +114,76 @@ if __name__ == "__main__":
             score += reward
             timeSteps += 1
         # Average loss
-        episodeLoss /= numSamples
+        episodeLoss /= (numSamples + 1)
         # Print timesteps, score
-        print "Ep {0:>6}: steps {1:>6}, score {2:>6}, time {3:>9.2f}, loss {4:>10.2f}".format(episode, timeSteps+1, int(score), time.time()-startTime, episodeLoss)
+        print EPISODE_STRING.format(episode, timeSteps+1, int(score), time.time()-startTime, episodeLoss)
         # Store score and loss
-        scores.append(score)
-        losses.append(episodeLoss)
+        scores.put(score)
+        losses.put(episodeLoss)
+    # Return items
+
+# If main...
+if __name__ == "__main__":
+    # Set parameters
+    game = "Breakout"
+    isRAM = True
+    numEpisodes = 25000
+    closeRender = True
+    isMultiprocess = True
+    oneLife = True
+    discount = 0.99
+    loss_func = torch.nn.SmoothL1Loss()
+    # Initialize environment and get observation dimensions
+    env = gym.make(game + isRAM * "-ram" + "-v4")
+    # env.env.frameskip = 6
+    obsDims = processObs(env.reset(), isRAM).shape
+    tileDims = tuple([NUM_FRAMES] + len(obsDims) * [1])
+    # Specify memory arguments and initialize memory
+    memoryArgs = {"capacity": MEMORY_CAPACITY,
+                  "batchSize": BATCH_SIZE,
+                  "numFrames": NUM_FRAMES,
+                  "obsDims": obsDims}
+    memory = ExperienceReplay(**memoryArgs)
+    # Specify model arguments and initialize models
+    modelType = NNRAM if isRAM else NNscreen
+    modelArgs = {"num_frames": NUM_FRAMES,
+                 "b": CONVOLUTION_BRANCH,
+                 "input_dim": obsDims,
+                 "output_dim": env.action_space.n}
+    modelOpt = modelType(**modelArgs)
+    modelFix = modelType(**modelArgs)
+    # Have models share memory
+    modelOpt.share_memory()
+    modelFix.share_memory()
+    # Initialize optimizers
+    optimizer = torch.optim.Adam(modelOpt.parameters())
+    # Initialize queues to store scores and losses
+    scores = mp.Queue()
+    losses = mp.Queue()
+    # Get number of actual processes
+    numProcesses = NUM_PROCESSES if isMultiprocess else 1
+    # Start the training timer
+    startTime = time.time()
+    # Multiprocess
+    processes = []
+    for rank in range(numProcesses):
+        p = mp.Process(target=train, args=(modelOpt, modelFix, scores, losses))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
+    # Turn scores and losses to list
+    scoresList = []
+    lossesList = []
+    for _ in range(numProcesses * numEpisodes):
+        scoresList.append(scores.get())
+        lossesList.append(losses.get())
     # Plot scores and save
-    plt.plot(scores)
+    plt.plot(list(scoresList))
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_scores.png")
     plt.close()
     # Plot loss and save
-    plt.plot(losses)
+    plt.plot(list(lossesList))
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_losses.png")
     plt.close()
     # Save model
