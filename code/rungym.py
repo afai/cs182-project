@@ -4,11 +4,12 @@ from agents import *
 
 # Set game
 game = "Breakout"
+isRAM = False
 # Create environment
-env = gym.make(game + "-ram-v4")
+env = gym.make(game + isRAM * "-ram" + "-v4")
 # Create agent
 # agent = RandomAgent()
-agent = DQNagent(game, isRAM=False, env=env, epsilon=0.05)
+agent = DQNagent(game, isRAM=isRAM, env=env, epsilon=0.00)
 # Set maximum number of plan-ahead actions and number of episodes
 numEpisodes = 100
 closeRender = False
@@ -37,7 +38,7 @@ for episode in range(numEpisodes):
         # Add to score
         score += reward
         # Increment time
-        timeSteps += len(actions)
+        timeSteps += 1
     # Print timesteps, score
     print "Episode {0:>3}: {1:>4} steps, score {2:>6}, time {3:>6.2f}".format(episode, timeSteps+1, int(score), time.time()-startTime)
     # Store score
