@@ -1,4 +1,4 @@
-import sys, time, random
+import sys, time, random, pickle
 import gym
 import torch
 import torch.nn.functional as F
@@ -321,6 +321,7 @@ NUM_PROCESSES = 4
 EPSILON_MIN = 0.1
 EPSILON_STOP = 0.7
 GRAY_WEIGHTS = [0.3, 0.6, 0.1]
+MOVE_AVG = 100
 EPISODE_STRING = "Ep {0:>6}: steps {1:>6}, score {2:>6}, time {3:>9.2f}, loss {4:>10.2f}"
 
 TRAINING_FUN = {"DQN_EP": trainDQNep,
@@ -331,13 +332,13 @@ TRAINING_FUN = {"DQN_EP": trainDQNep,
 if __name__ == "__main__":
     # Set parameters
     game = "Breakout"
-    isRAM = False
-    numEpisodes = 10000
+    isRAM = True
+    numEpisodes = 12000
     closeRender = True
     isMultiprocess = True
     oneLife = False
     discount = 0.99
-    trainType = "NSTEP_QL"
+    trainType = "DQN_AS"
     loss_func = torch.nn.SmoothL1Loss()
     # Create game-string
     gameString = game + isRAM * "-ram" + "-v4"
@@ -379,10 +380,17 @@ if __name__ == "__main__":
         processes.append(p)
     for p in processes:
         p.join()
-    # Plot scores and save
+    # Smooth scores
+    # scores = scores[:]
+    # smoothScores = np.zeros((len(scores)-MOVE_AVG))
+    # for i in range(len(smoothScores)):
+    #     smoothScores[i] = np.average(scores[i:i+100])
+    # Plot smoothed scores
     plt.plot(scores[:])
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_scores.png")
     plt.close()
+    with open("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_scores_" + trainType + ".pk", "wb") as f:
+        pickle.dump(scores[:], f)
     # Plot loss and save
     plt.plot(losses[:])
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_losses.png")

@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 from NN import *
-from trainDQN import processObs
+from train import processObs
 
 # Agent class
 class Agent:

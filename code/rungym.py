@@ -4,7 +4,7 @@ from agents import *
 
 # Set game
 game = "Breakout"
-isRAM = False
+isRAM = True
 # Create environment
 env = gym.make(game + isRAM * "-ram" + "-v4")
 # Create agent
