@@ -21,8 +21,8 @@ class RandomAgent(Agent):
 
 class DQNagent(Agent):
     # Initialize
-    def __init__(self, game, isRAM, env, epsilon=0.0):
-        with open("models/" + isRAM * "RAM/" + (not isRAM) * "screen/" + game, "rb") as f:
+    def __init__(self, game, isRAM, trainType, env, epsilon=0.0):
+        with open("modelsread/" + game + isRAM * "-ram" +  "-" + trainType, "rb") as f:
             self.model = torch.load(f)
         self.epsilon = epsilon
         self.isRAM = isRAM

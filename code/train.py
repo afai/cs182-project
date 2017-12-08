@@ -61,7 +61,6 @@ def trainDQNep(modelOpt, modelFix, scores, losses, episode):
         numSamples = 0
         # Reset environment and set done to false
         currObsStacked = np.tile(processObs(env.reset(), isRAM), tileDims)
-        lives = env.env.ale.lives()
         done = False
         # Render
         env.render(close=closeRender)
@@ -80,10 +79,6 @@ def trainDQNep(modelOpt, modelFix, scores, losses, episode):
                 action = action.data[0]
             # Perform action and observe
             nextObs, reward, done, info = env.step(action)
-            # If one life per episode and we lost it...
-            if oneLife and lives > info["ale.lives"]:
-                # Set done to True to end episode
-                done = True
             # Compute next observation stacked
             nextObsStacked = np.vstack((currObsStacked[1:], np.expand_dims(processObs(nextObs, isRAM), 0)))
             # Store transition
@@ -152,7 +147,6 @@ def trainDQNasync(modelOpt, modelFix, scores, losses, episode):
         score = 0.0
         # Reset environment and set done to false
         currObsStacked = np.tile(processObs(env.reset(), isRAM), tileDims)
-        lives = env.env.ale.lives()
         done = False
         # Render
         env.render(close=closeRender)
@@ -179,10 +173,6 @@ def trainDQNasync(modelOpt, modelFix, scores, losses, episode):
                 action = action.data[0]
             # Perform action and observe
             nextObs, reward, done, info = env.step(action)
-            # If one life per episode and we lost it...
-            if oneLife and lives > info["ale.lives"]:
-                # Set done to True to end episode
-                done = True
             # Compute next observation stacked
             nextObsStacked = np.vstack((currObsStacked[1:], np.expand_dims(processObs(nextObs, isRAM), 0)))
             # Render
@@ -239,7 +229,6 @@ def trainNstepQL(modelOpt, modelFix, scores, losses, episode):
         score = 0.0
         # Reset environment and set done to false
         currObsStacked = np.tile(processObs(env.reset(), isRAM), tileDims)
-        lives = env.env.ale.lives()
         done = False
         # Render
         env.render(close=closeRender)
@@ -264,16 +253,16 @@ def trainNstepQL(modelOpt, modelFix, scores, losses, episode):
                 action = action.data[0]
             # Perform action and observe
             nextObs, reward, done, info = env.step(action)
-            # If one life per episode and we lost it...
-            if oneLife and lives > info["ale.lives"]:
-                # Set done to True to end episode
-                done = True
             # Render
             env.render(close=closeRender)
             # Add to lists
             currObsAll.append(np.expand_dims(currObsStacked, 0))
             actionsAll.append(action)
             rewardsAll.append(reward)
+            # If we have reached the time step limit...
+            if timeSteps >= TIMESTEP_LIMIT:
+                # Boot from the front to free up memory
+                del currObsAll[0], actionsAll[0], rewardsAll[0]
             # Update current observation, score, time
             currObsStacked = np.vstack((currObsStacked[1:], np.expand_dims(processObs(nextObs, isRAM), 0)))
             score += reward
@@ -286,7 +275,7 @@ def trainNstepQL(modelOpt, modelFix, scores, losses, episode):
         R = Variable(torch.zeros(1), requires_grad=False)
         loss = 0
         # For each timestep, backwards...
-        for t in range(timeSteps)[::-1]:
+        for t in range(len(currObsAll))[::-1]:
             # Accumulate reward and loss
             R = R * discount + rewardsAll[t]
             loss += loss_func(qValuesCurr[t, actionsAll[t]], R)
@@ -312,7 +301,7 @@ def trainNstepQL(modelOpt, modelFix, scores, losses, episode):
 #################
 
 # Global parameters
-MEMORY_CAPACITY = 50000
+MEMORY_CAPACITY = 10000
 BATCH_SIZE = 32
 NUM_FRAMES = 4
 CONVOLUTION_BRANCH = 2
@@ -321,8 +310,8 @@ NUM_PROCESSES = 4
 EPSILON_MIN = 0.1
 EPSILON_STOP = 0.7
 GRAY_WEIGHTS = [0.3, 0.6, 0.1]
-MOVE_AVG = 100
 EPISODE_STRING = "Ep {0:>6}: steps {1:>6}, score {2:>6}, time {3:>9.2f}, loss {4:>10.2f}"
+TIMESTEP_LIMIT = 800 # 800 for screen, unbounded for RAM
 
 TRAINING_FUN = {"DQN_EP": trainDQNep,
                 "DQN_AS": trainDQNasync,
@@ -330,15 +319,15 @@ TRAINING_FUN = {"DQN_EP": trainDQNep,
 
 # If main...
 if __name__ == "__main__":
-    # Set parameters
+    # Set parameters to change
     game = "Breakout"
-    isRAM = True
-    numEpisodes = 12000
+    isRAM = False
+    trainType = "NSTEP_QL"
+    numEpisodes = 15000
+    # Parameters, but not to change
     closeRender = True
     isMultiprocess = True
-    oneLife = False
     discount = 0.99
-    trainType = "DQN_AS"
     loss_func = torch.nn.SmoothL1Loss()
     # Create game-string
     gameString = game + isRAM * "-ram" + "-v4"
@@ -357,7 +346,7 @@ if __name__ == "__main__":
     modelFix.load_state_dict(modelOpt.state_dict())
     # If training a traditional DQN...
     if trainType == "DQN_EP":
-        # Change number of processes to 1 so memory is used
+        # Change number of processes to 1 so full memory is used
         NUM_PROCESSES = 1
     # Have models share memory
     modelOpt.share_memory()
@@ -380,21 +369,16 @@ if __name__ == "__main__":
         processes.append(p)
     for p in processes:
         p.join()
-    # Smooth scores
-    # scores = scores[:]
-    # smoothScores = np.zeros((len(scores)-MOVE_AVG))
-    # for i in range(len(smoothScores)):
-    #     smoothScores[i] = np.average(scores[i:i+100])
-    # Plot smoothed scores
+    # Save model
+    with open("modelswrite/" + game + isRAM * "-ram" +  "-" + trainType, "wb") as f:
+        torch.save(modelOpt, f)
+    # Plot scores and save
     plt.plot(scores[:])
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_scores.png")
     plt.close()
     with open("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_scores_" + trainType + ".pk", "wb") as f:
         pickle.dump(scores[:], f)
-    # Plot loss and save
+    # Plot loss
     plt.plot(losses[:])
     plt.savefig("plots/" + game + isRAM * "-ram" + "_" + str(numEpisodes) + "e_losses.png")
     plt.close()
-    # Save model
-    with open("models/" + isRAM * "RAM/" + (not isRAM) * "screen/" + game, "wb") as f:
-        torch.save(modelOpt, f)
