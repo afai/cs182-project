@@ -1,0 +1,13 @@
+\begin{thebibliography}{1}
+
+\bibitem{mnih}
+Mnih et. al.
+\newblock Playing atari with deep reinforcement learning.
+\newblock 2013.
+
+\bibitem{mnihAsync}
+Mnih et. al.
+\newblock Asynchronous methods for deep reinforcement learning.
+\newblock 2016.
+
+\end{thebibliography}
